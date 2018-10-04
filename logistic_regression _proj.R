@@ -113,31 +113,33 @@ which (is.na(NH11$everwrk))
 which (is.na(NH11$age_p))
 which (is.na(NH11$r_maritl))
 
+sum(is.na(NH11$everwrk))/nrow(NH11)
+#command above tells you that everwrk has 57% NA values.
 
+#better to remove a column that has so many NA values (over 20%)
+#if under 20% NA, replace with mean or median
+#here, we need to run regression on everwrk, so we must remove NA values
 
-# HOW DO I REMOVE OBSERVATIONS WHERE EVERWORK IS DIFFERENT THAN YES OR NO?
-# WHAT"S THE DIFFERENCE BETWEEN LEVELS AND UNIQUE? WHEN SHOULD I USE EITHER?
-levels(NH11$everwrk)
-NH11 <- subset(NH11, everwrk == "1 Yes" | everwrk == "2 No", select=fmx:ausualpl)
-levels(NH11$everwrk)
-NH11 <- NH11[ which(NH11$everwrk=="1 Yes" |
-                         NH11$everwrk=="2 No"), ]
-levels(NH11$everwrk)
-unique(NH11$everwrk)
+#DF with NA's removed 
+nav <- which(is.na(NH11$everwrk) == FALSE)
+table(nav)
+nadf <- NH11[nav, ]
+#selected rows from NH11 which match nav
+sum(is.na(nadf$everwrk))
+dim(nadf)
 
-
+unique(nadf$r_maritl)
 
 ##   1. Use glm to conduct a logistic regression to predict ever worked
 ##      (everwrk) using age (age_p) and marital status (r_maritl).
-ewmod <- glm(everwrk ~ r_maritl + age_p, data = NH11, family = "binomial", na.rm = TRUE)
+ewmod <- glm(everwrk ~ r_maritl + age_p, data = nadf, family = "binomial", na.rm = TRUE)
 summary(ewmod)
 
 
-
 ##   2. Predict the probability of working for each level of marital
-predDat3 <- with(NH11,
-                 expand.grid(r_maritl = c("0 Under 14 years", "1 Married - spouse in household", 
-                                          "2 Married - spouse not in household", "3 Married - spouse in household unknown",
+predDat3 <- with(nadf,
+                 expand.grid(r_maritl = c("1 Married - spouse in household", 
+                                          "2 Married - spouse not in household",
                                           "4 Widowed", "5 Divorced", "6 Separated", "7 Never married", 
                                           "8 Living with partner", "9 Unknown marital status"),
                              age_p = mean(age_p, na.rm = TRUE)))
@@ -147,13 +149,10 @@ probew <- cbind(predDat3, predict(ewmod, type = "response", se.fit = TRUE, inter
 probew
 # WHY IS THIS A MESS? WHY ARE THE LEVELS OF r_maritl NOT GROUPED? 
 
-
-
+unique(NH11$r_maritl)
 # predict hypertension at those levels
 hmmod <- glm(hypev ~ r_maritl, data = NH11, family = "binomial")
 summary(hmmod)
-# WHERE DID THE OBSERVATIONS GO FOR "0 Under 14 years" "1 Married - spouse in household" "3 Married - spouse in household unknown" ?!
-#(I removed those levels for the test to make it work but still want to figure out what happened). 
 
 predDat4 <- with(NH11,
                  expand.grid(r_maritl = c( "2 Married - spouse not in household",
@@ -161,6 +160,5 @@ predDat4 <- with(NH11,
                                           "8 Living with partner", "9 Unknown marital status")))
 predDat4
 
-      
 probhm <- cbind(predDat4, predict(hmmod, type = "response", se.fit = TRUE, interval = "confidence", newdata = predDat4))
 probhm
